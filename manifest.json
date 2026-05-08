@@ -1,1 +1,102 @@
-rsconnect::writeManifest(contentCategory = "site")
+{
+  "version": 1,
+  "metadata": {
+    "title": "Food Desert Analysis",
+    "description": "Analysis of food deserts across Colorado using USDA Food Access Research Atlas data",
+    "authors": ["Landon Mottel", "Zachary Morse"],
+    "primaryDocument": "food_desert_final.qmd",
+    "documentType": "quarto"
+  },
+  "r": {
+    "version": "4.0.0",
+    "packages": [
+      {
+        "name": "tidyverse",
+        "version": "*",
+        "description": "Data cleaning and manipulation"
+      },
+      {
+        "name": "sf",
+        "version": "*",
+        "description": "Simple features for spatial/mapping operations"
+      },
+      {
+        "name": "readr",
+        "version": "*",
+        "description": "Reading CSV and other file formats"
+      },
+      {
+        "name": "ggplot2",
+        "version": "*",
+        "description": "Data visualization (included with tidyverse)"
+      },
+      {
+        "name": "dplyr",
+        "version": "*",
+        "description": "Data manipulation (included with tidyverse)"
+      },
+      {
+        "name": "stringr",
+        "version": "*",
+        "description": "String manipulation (included with tidyverse)"
+      },
+      {
+        "name": "tidyr",
+        "version": "*",
+        "description": "Data tidying (included with tidyverse)"
+      }
+    ]
+  },
+  "files": {
+    "data": [
+      {
+        "name": "Food Access Research Atlas.csv",
+        "description": "USDA Food Access Research Atlas dataset",
+        "required": true,
+        "source": "https://www.ers.usda.gov/data-products/food-access-research-atlas/"
+      },
+      {
+        "name": "cb_2019_08_bg_500k.shp",
+        "description": "Colorado census block group geometry data (main shapefile)",
+        "required": true,
+        "source": "https://www.census.gov/geographies/mapping-files/time-series/geo/cartographic-boundary.html"
+      },
+      {
+        "name": "cb_2019_08_bg_500k.shx",
+        "description": "Shapefile index file",
+        "required": true
+      },
+      {
+        "name": "cb_2019_08_bg_500k.dbf",
+        "description": "Shapefile attribute database",
+        "required": true
+      },
+      {
+        "name": "cb_2019_08_bg_500k.prj",
+        "description": "Shapefile projection definition",
+        "required": true
+      },
+      {
+        "name": "cb_2019_08_bg_500k.cpg",
+        "description": "Shapefile codepage file",
+        "required": true
+      },
+      {
+        "name": "cb_2019_08_bg_500k.shp.iso.xml",
+        "description": "Shapefile metadata (ISO)",
+        "required": false
+      },
+      {
+        "name": "cb_2019_08_bg_500k.shp.ea.iso.xml",
+        "description": "Shapefile extended attributes metadata",
+        "required": false
+      }
+    ]
+  },
+  "deployment": {
+    "outputFormat": "html",
+    "embedResources": true,
+    "requiresInternetConnection": false,
+    "estimatedSize": "25MB"
+  }
+}
