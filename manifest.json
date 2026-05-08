@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "metadata": {
+    "appmode": "quarto-render",
+    "entrypoint": "food_desert_final.qmd"
+  },
+  "platform": "4.2.0",
+  "r": {
+    "version": "4.0.0",
+    "packages": [
+      {
+        "name": "tidyverse",
+        "version": "2.0.0"
+      },
+      {
+        "name": "sf",
+        "version": "1.0.14"
+      },
+      {
+        "name": "readr",
+        "version": "2.1.4"
+      }
+    ]
+  },
+  "files": {
+    "food_desert_final.qmd": {},
+    "Food Access Research Atlas.csv": {},
+    "cb_2019_08_bg_500k.shp": {},
+    "cb_2019_08_bg_500k.shx": {},
+    "cb_2019_08_bg_500k.dbf": {},
+    "cb_2019_08_bg_500k.prj": {},
+    "cb_2019_08_bg_500k.cpg": {},
+    "cb_2019_08_bg_500k.shp.iso.xml": {},
+    "cb_2019_08_bg_500k.shp.ea.iso.xml": {}
+  }
+}

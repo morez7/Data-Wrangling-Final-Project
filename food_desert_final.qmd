@@ -1,0 +1,218 @@
+---
+title: "Food Desert Analysis"
+author: "Landon Mottel, Zachary Morse"
+format: 
+  html:
+    embed-resources: true
+editor: visual
+warning: false
+---
+
+# Introduction
+
+The Food Access Research Atlas data set includes a plethora of information about food deserts across the country. For our project we decided to narrow down our analysis to the state of Colorado to make it more relevant. We hope to see if certain groups are more prone to having less access to fresh food, and we also want to see if there is any geographic patterns for fresh food scarcity that could be negatively effecting local populations.
+
+To achieve this goal we will analyze populations through the state. By finding relations between location, ethnicity and food scarcity, we can see if there are any under served communities where new grocery store developments would help the population have quick access to healthy foods.
+
+# Packages Required
+
+Add your required package info/code here.
+
+```{r}
+#| message: false
+#| warning: false
+# install.packages("rlang")  # helps work with columns as single variables
+# install.packages("tidyverse")  # used for cleaning and better organizing data
+# install.packages("readr")  # helps us read various files
+
+library(tidyverse)  # loads tidyverse package
+library(sf)  # loads sf package so we can plot maps
+```
+
+# Data Preparation
+
+We got our data from <https://www.ers.usda.gov/data-products/food-access-research-atlas/documentation> and our geometry data for mapping from <https://www.census.gov/geographies/mapping-files/time-series/geo/cartographic-boundary.html>
+
+The purpose of this data was to measure accessibility to fresh food in supermarkets across the country. It was collected with the intention of helping community planners meet the needs of locals by having more insight on where there is greater need for new supermarkets. The Food Access Research Atlas data was gathered by combining 2019 store location data from TDLinx, SNAP Store Tracking and Redemption System data to map supermarkets, 2010 Decennial Census population data and 2014-2018 American Community Survey socioeconomic data to identify low-income and low-access census tracts. The data has 147 variables, which is too much to analyze at once so the variables will be narrowed down to get more specific insights. Many of the variables in the data have many NA values, so we will try not to use categories with too many NA values to keep the data clean and reliable.
+
+Below we import the FARA data set for the state of Colorado, as well as the geometry information for Colorado.
+
+```{r}
+food_info <- read_csv("Food Access Research Atlas.csv",  # imports our food desert file with NA vaues replaced with NULL
+                      na = c("NULL"))
+food_info <- subset(food_info, State == "Colorado")  # selects only entries from Colorado
+
+food_shp <- st_read("cb_2019_08_bg_500k.shp")  # assigns Colorado geometry object to food_shp
+
+
+```
+
+Below are some quick checks to see what our data looks like, and what types of data each column contains
+
+```{r}
+
+head(food_info)
+#names(food_info)  # Returns the names of our variables
+#ncol(food_info)  # We have 147 variables
+#head(food_shp)
+
+
+```
+
+```{r}
+
+food_shp$GEOID <- as.double(food_shp$GEOID)  # we need GEOID to be double type so we can join the data later
+head(food_shp)
+
+#food_shp[food_shp$GEOID == 8001007801]
+```
+
+For our data, we will focus on information about poverty rate, race, and food accessibility. In order to do this we must select those columns specifically.
+
+Poverty Rate: Percent of the population below poverty line
+
+Median Income: Middle income value for area
+
+Low-access tract at 1 and 10 miles: A tract with at least 500 people, or 33 percent of the population, living more than 1 mile (urban areas) or 10 miles (rural areas) from the nearest supermarket, super center, or large grocery store
+
+Other categories are percent of population by race:
+
+Race Percent: Label for which race percentage is in the row with white, black, native Hawaiian or Pacific Islander, Asian, American Indian or Alaska Native, Hispanic or Latino, multi race as the different categories
+
+Percent: Actual percentage for given race in census tract
+
+```{r}
+food_info_clean <- food_info |>
+  select(CensusTract, County, PovertyRate, MedianFamilyIncome, LA1and10, lawhitehalfshare, lablackhalfshare, lanhopihalfshare, laasianhalfshare, laaianhalfshare, laomultirhalfshare, lahisphalfshare) |> # select columns we want
+  rename(  # renames our data to be in snake case and have easier to read names
+    census_tract = CensusTract,
+    county = County,
+    poverty_rate = PovertyRate,
+    food_desert = LA1and10,
+    median_family_income = MedianFamilyIncome,
+    pct_white = lawhitehalfshare,
+    pct_black = lablackhalfshare,
+    pct_native_hawaiian_pacific_islander = lanhopihalfshare,
+    pct_asian = laasianhalfshare,
+    pct_multi_race = laomultirhalfshare,
+    pct_hispanic_latino = lahisphalfshare,
+    pct_american_indian_alasaka_native = laaianhalfshare 
+  ) |>
+  drop_na() |>
+  mutate(census_tract = str_pad(as.character(census_tract), width = 11, side = "left", pad = "0")) |>
+  mutate(food_desert = ifelse(food_desert == 1, "Desert", "Not Desert")) |>
+  pivot_longer(cols = c("pct_white", "pct_black", "pct_native_hawaiian_pacific_islander", "pct_asian", "pct_multi_race", "pct_hispanic_latino", "pct_american_indian_alasaka_native"),
+               names_to = "race_percent",
+               values_to = "percent")
+  
+food_info_clean
+```
+
+# Exploratory Data Analysis
+
+First, below is a comparison of race percentage and poverty rate, faceted by race. What we can see from this data is that most census tracts in Colorado have 50%-95% white population while having on average, below a 20% poverty rate. For the other races, they are much less of the population percent, with the. majority below 25% of the population, but with many more census tracts having a poverty rate above 25%.
+
+```{r}
+ggplot(food_info_clean, aes(x = percent, y = poverty_rate, color = race_percent)) +
+  geom_point(size = 0.2, alpha = 0.5) +
+  facet_wrap(~race_percent) +
+  labs(title = "Poverty Rate by Race Percentage",
+       x = "Percent of Race",
+       y = "Percent In Poverty")
+```
+
+Below we can see from the violin plot, for all races, there is a larger amount of tracts that qualify as food deserts with about 5% poverty rate, more than those not classified as food deserts in every category. Additionally for every food desert violin plot, the food desert plot has a long tail at the top signifying that over about a 60% poverty rate results in a tract being classified as a food desert. From this we can see a correlation between high poverty rates and food desert status which should be investigated more.
+
+```{r}
+ggplot(food_info_clean, aes(x = food_desert, y = poverty_rate, color = race_percent)) +
+  geom_violin() +
+  facet_wrap(~race_percent) +
+  labs(title = "Poverty Rate For Food Deserts VS Non-Food Deserts",
+       x = "Food Desert Status",
+       y = "Poverty Rate")
+```
+
+```{r}
+food_shp <- food_shp |>
+  mutate(GEOID = as.character(GEOID))
+
+food_shp <- food_shp |>
+  mutate(
+    GEOID_clean = str_sub(str_pad(as.character(GEOID), 12, "left", "0"), 1, 11)
+  )
+```
+
+Below we will split data into tracts with a 30% poverty rate or higher, and tracts with a poverty rate below 45%
+
+```{r}
+
+poverty_above_30<- food_shp |>
+  left_join(food_info_clean, by = c("GEOID_clean" = "census_tract")) |>
+  filter(poverty_rate >= 30) |>
+  distinct(GEOID_clean, .keep_all = TRUE)
+```
+
+```{r}
+poverty_below_45 <- food_info_clean |>
+  filter(poverty_rate < 45)
+```
+
+```{r}
+
+ggplot(food_shp) +
+  geom_sf() +
+  geom_sf(data = poverty_above_30, fill = "blue") +
+  labs(
+    title = "Tracts With Poverty Rate Above 30%"
+  ) + 
+  facet_wrap(~food_desert)
+```
+
+Below we create a new subset of the data for tracts with over 50% of the population being minority to see if these tracts differ from the general population in their food desert status.
+
+```{r}
+diverse_tracts <- food_shp |>
+  left_join(food_info_clean, by = c("GEOID_clean" = "census_tract")) |>
+  filter(race_percent == "pct_white" & percent < 50)
+
+```
+
+```{r}
+
+ggplot(food_shp) +
+  geom_sf() +
+  geom_sf(data = diverse_tracts, fill = 'green') +
+  labs(
+    title = "Diverse Census Tracts",
+    subtitle = "Tracts with Minority population above 50%"
+  ) +
+  facet_wrap(~food_desert)
+```
+
+Below is a graph of the state divided into food deserts (red) and non food deserts (blue). We can see that counties tend to be food deserts as they get further away from Denver and Colorado Springs. It can be seen that in the mountains, the counties that are not food deserts also contain larger cities and ski resorts, which would explain why they have better access to fresh food.
+
+```{r}
+desert <- food_shp |>
+  left_join(food_info_clean, by = c("GEOID_clean" = "census_tract")) |>
+  filter(food_desert == "Desert")
+
+not_desert <- food_shp |>
+  left_join(food_info_clean, by = c("GEOID_clean" = "census_tract")) |>
+  filter(food_desert != "Desert")
+
+ggplot(food_shp) +
+  geom_sf() +
+  geom_sf(data = desert, fill = "red") +
+  geom_sf(data = not_desert, fill = 'blue') +
+  labs(
+    title = "Food Desert Census Tracts in Colorado"
+  )
+```
+
+# Summary
+
+Through data visualization we can now have some answers to our initial questions "Are certain groups more prone to being in a food desert?" and "Are there any geographic patterns that can explain food scarcity?". Through using scatter plots we could see that race was not that big of a factor in food desert status, so we did not look into it further. However through the violin plot, we could see that there appeared to be some correlation between poverty rate and food desert status, where higher poverty counties were more likely to be classified as a food desert. Because of this correlation we investigated how poverty rates were related to food desert status and found that all tracts with a poverty rate over 30% were food deserts suggesting that poverty and lack of access to fresh food are related. When we looked into census tracts with minority populations above 50% no meaningful relations were found suggesting that race is not an important factor in food desert status. Another insightful geographic analysis of our data where food desert and non food desert tracts were graphed, showed us that there is a strong relation between food deserts, and distance from major cities, and in the mountains, ski resorts.
+
+From our analysis, the evidence suggests that the main factors in the state of Colorado that relate to food desert status are poverty rate and distance from larger cities or ski resorts. With this information we can see that there is a clear inequity in food access through the state and those living in rural or high poverty areas struggle to get healthy fresh food. Potentially government spending and local committees can help fund and encourage new supermarkets to be developed in these areas.
+
+Our analysis was limited by the data provided to us since, on a tract level, demographics are ignored and most borders are arbitrary and do not reflect the actual populations inside of them. To improve upon the data we were provided, it would be interesting to see the individual points where food deserts are instead of classifying a tract as a food desert so information the more accurately represents boundaries of food deserts.
